@@ -1,0 +1,255 @@
+{
+  "meta": {
+    "generatedAt": "2026-08-25T05:42:58.593Z",
+    "rangeLabel": "all",
+    "agents": [
+      "claude"
+    ],
+    "projectFilter": "all",
+    "totals": {
+      "sessions": 1,
+      "durationMs": 510473,
+      "turns": 22,
+      "files": 1,
+      "netLines": 0,
+      "toolCallsTotal": 21,
+      "toolSuccessRate": 71.4,
+      "totalCostUSD": 0.4526964,
+      "cacheReadCostUSD": 0.1275039,
+      "pricedSessions": 1
+    },
+    "unpricedModels": [],
+    "coverage": [
+      {
+        "agentName": "claude",
+        "total": 1,
+        "priced": 1,
+        "withLog": 1
+      }
+    ],
+    "periodStart": "2026-08-21T13:42:21.177Z",
+    "periodEnd": "2026-08-21T13:50:51.650Z"
+  },
+  "sessions": [
+    {
+      "sessionId": "cca30c33-acfc-4550-842e-9c8e6ac38e25",
+      "agentName": "claude",
+      "provider": "ai-run-sso",
+      "title": "hi",
+      "project": "/Users/dipayan_das/Documents/capstone_projects/ghcp/solution-repo/agentic-docsync-capstone",
+      "branch": "main",
+      "startTime": 1787319741177,
+      "durationMs": 510473,
+      "turns": 22,
+      "fileOps": 1,
+      "linesAdded": 0,
+      "linesRemoved": 0,
+      "linesModified": 0,
+      "netLines": 0,
+      "filesChanged": 0,
+      "filesWritten": 0,
+      "filesEdited": 0,
+      "toolCallsTotal": 21,
+      "toolCallsSuccess": 15,
+      "toolCallsFailure": 6,
+      "models": [
+        "claude-sonnet-4-5-20250929"
+      ],
+      "languages": [],
+      "tools": [
+        {
+          "toolName": "Bash",
+          "totalCalls": 13,
+          "successCount": 12,
+          "failureCount": 1,
+          "successRate": 92.3076923076923
+        },
+        {
+          "toolName": "Read",
+          "totalCalls": 4,
+          "successCount": 0,
+          "failureCount": 4,
+          "successRate": 0
+        },
+        {
+          "toolName": "Grep",
+          "totalCalls": 2,
+          "successCount": 2,
+          "failureCount": 0,
+          "successRate": 100
+        },
+        {
+          "toolName": "WebFetch",
+          "totalCalls": 1,
+          "successCount": 1,
+          "failureCount": 0,
+          "successRate": 100
+        },
+        {
+          "toolName": "Agent",
+          "totalCalls": 1,
+          "successCount": 0,
+          "failureCount": 1,
+          "successRate": 0
+        }
+      ],
+      "tokens": {
+        "input": 100,
+        "output": 8162,
+        "cacheRead": 425013,
+        "cacheCreation": 53990,
+        "cacheCreation1h": 0,
+        "total": 487265
+      },
+      "costUSD": 0.4526964,
+      "cacheReadCostUSD": 0.1275039,
+      "perModelCost": [
+        {
+          "model": "claude-sonnet-4-5-20250929",
+          "tokens": {
+            "input": 100,
+            "output": 8162,
+            "cacheRead": 425013,
+            "cacheCreation": 53990,
+            "cacheCreation1h": 0,
+            "total": 487265
+          },
+          "costUSD": 0.4526964,
+          "unpriced": false
+        }
+      ],
+      "hadLog": true,
+      "costSeries": [
+        {
+          "t": 1787319751422,
+          "cost": 0.102195,
+          "tokens": 26933
+        },
+        {
+          "t": 1787319768740,
+          "cost": 0.1137798,
+          "tokens": 54059
+        },
+        {
+          "t": 1787319788674,
+          "cost": 0.12506475,
+          "tokens": 81530
+        },
+        {
+          "t": 1787319913555,
+          "cost": 0.13490985,
+          "tokens": 109061
+        },
+        {
+          "t": 1787319920715,
+          "cost": 0.1466937,
+          "tokens": 136848
+        },
+        {
+          "t": 1787319923540,
+          "cost": 0.2012652,
+          "tokens": 151143
+        },
+        {
+          "t": 1787319929612,
+          "cost": 0.21277425,
+          "tokens": 166905
+        },
+        {
+          "t": 1787319938683,
+          "cost": 0.2218002,
+          "tokens": 182969
+        },
+        {
+          "t": 1787319989436,
+          "cost": 0.2294385,
+          "tokens": 199225
+        },
+        {
+          "t": 1787319995347,
+          "cost": 0.2397699,
+          "tokens": 216438
+        },
+        {
+          "t": 1787320018978,
+          "cost": 0.2477253,
+          "tokens": 233903
+        },
+        {
+          "t": 1787320031126,
+          "cost": 0.2641557,
+          "tokens": 252706
+        },
+        {
+          "t": 1787320060524,
+          "cost": 0.2841342,
+          "tokens": 272362
+        },
+        {
+          "t": 1787320091756,
+          "cost": 0.29965545,
+          "tokens": 292484
+        },
+        {
+          "t": 1787320103150,
+          "cost": 0.31818195,
+          "tokens": 313837
+        },
+        {
+          "t": 1787320115849,
+          "cost": 0.3380403,
+          "tokens": 336364
+        },
+        {
+          "t": 1787320156344,
+          "cost": 0.357267,
+          "tokens": 359597
+        },
+        {
+          "t": 1787320167636,
+          "cost": 0.37709235,
+          "tokens": 383556
+        },
+        {
+          "t": 1787320209735,
+          "cost": 0.39781035,
+          "tokens": 408271
+        },
+        {
+          "t": 1787320231098,
+          "cost": 0.42834885,
+          "tokens": 434392
+        },
+        {
+          "t": 1787320240925,
+          "cost": 0.44298705,
+          "tokens": 460756
+        },
+        {
+          "t": 1787320251650,
+          "cost": 0.4526964,
+          "tokens": 487265
+        }
+      ],
+      "dispatches": [
+        {
+          "kind": "agent",
+          "name": "general-purpose",
+          "start": 1787319920715,
+          "durationMs": 344991
+        }
+      ],
+      "skillInvocations": [],
+      "agentInvocations": [
+        {
+          "name": "general-purpose",
+          "totalCalls": 1,
+          "successCount": 1,
+          "failureCount": 0
+        }
+      ],
+      "commandInvocations": [],
+      "sessionSource": "Pure chat"
+    }
+  ]
+}
