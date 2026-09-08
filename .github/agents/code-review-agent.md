@@ -1,3 +1,8 @@
+---
+name: code-review-agent
+description: Performs a comprehensive code review of the implementation, checking for correctness, security, quality, and best practices.
+---
+
 # Code Review Agent
 
 ## Purpose

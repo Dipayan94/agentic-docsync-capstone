@@ -1,3 +1,8 @@
+---
+name: verification-agent
+description: Generates comprehensive unit and integration tests, runs them, and verifies the implementation meets all requirements.
+---
+
 # Verification Agent
 
 ## Purpose

@@ -1,3 +1,8 @@
+---
+name: requirements-agent
+description: Extracts and structures functional and non-functional requirements from the PRD into a clear requirements document.
+---
+
 # Requirements Agent
 
 ## Purpose

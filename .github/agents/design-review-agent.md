@@ -1,3 +1,8 @@
+---
+name: design-review-agent
+description: Conducts a structured design review of the proposed architecture, identifying risks, gaps, and potential improvements before implementation begins.
+---
+
 # Design Review Agent
 
 ## Purpose

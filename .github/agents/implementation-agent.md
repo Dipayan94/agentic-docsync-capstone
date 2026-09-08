@@ -1,3 +1,8 @@
+---
+name: implementation-agent
+description: Executes the implementation plan by writing production code for all modules in the docsync package.
+---
+
 # Implementation Agent
 
 ## Purpose
@@ -168,7 +173,7 @@ class Endpoint:
     method: str
     summary: str
     parameters: List[Parameter]
-    responses: List[Response]
+    responses: Dict[int, Response]
     description: str = ""
 
 @dataclass

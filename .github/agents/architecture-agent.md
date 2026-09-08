@@ -1,3 +1,8 @@
+---
+name: architecture-agent
+description: Designs the high-level system architecture based on requirements, proposing components, data flow, and technology choices.
+---
+
 # Architecture Agent
 
 ## Purpose

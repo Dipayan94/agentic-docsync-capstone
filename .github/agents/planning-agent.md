@@ -1,3 +1,8 @@
+---
+name: planning-agent
+description: Breaks down the approved architecture into a prioritized, dependency-ordered task list for implementation.
+---
+
 # Planning Agent
 
 ## Purpose

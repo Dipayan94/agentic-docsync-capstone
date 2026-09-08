@@ -1,3 +1,8 @@
+---
+name: pr-agent
+description: Creates a comprehensive Pull Request with description, test evidence, changelog, and reviewer checklist.
+---
+
 # PR Agent
 
 ## Purpose

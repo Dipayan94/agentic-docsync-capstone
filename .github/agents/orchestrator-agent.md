@@ -1,3 +1,8 @@
+---
+name: orchestrator-agent
+description: Coordinates the complete Agentic SDLC workflow, managing agent execution order, human approval gates, and state transitions.
+---
+
 # Orchestrator Agent
 
 ## Purpose
