@@ -1,6 +1,53 @@
 # Python/FastAPI Tutorial for Visual Studio Code
 This sample contains the completed program from the tutorial: [FastAPI in Visual Studio Code](https://code.visualstudio.com/docs/python/tutorial-fastapi). Immediate steps are not included. 
 
+## DocSync CLI
+
+This project includes a `docsync` CLI tool for generating and syncing API documentation from OpenAPI schemas.
+
+### Quick Start
+
+```bash
+# Generate documentation from an OpenAPI schema
+python -m docsync sync \
+  --schema path/to/openapi.json \
+  --docs path/to/existing-docs.md \
+  --output path/to/output-docs.md
+
+# Preview changes without writing (dry-run)
+python -m docsync sync \
+  --schema path/to/openapi.json \
+  --docs path/to/existing-docs.md \
+  --output path/to/output-docs.md \
+  --dry-run
+
+# Get JSON format report
+python -m docsync sync \
+  --schema path/to/openapi.json \
+  --docs path/to/existing-docs.md \
+  --output path/to/output-docs.md \
+  --format json
+```
+
+### Features
+
+- **OpenAPI 3.x Support**: Validates and processes OpenAPI 3.x JSON schemas
+- **Marker-Based Merge**: Preserves custom content outside generated sections using markers
+- **Sync Reports**: Shows added/removed endpoints in JSON or Markdown format
+- **Dry-Run Mode**: Preview changes without modifying files
+- **Deterministic Exit Codes**:
+  - `0`: Success
+  - `1`: Runtime error (IO, permissions, unhandled exceptions)
+  - `2`: Validation failure (invalid schema, malformed markers)
+
+### Markers
+
+The tool uses HTML comment markers to identify generated sections:
+- Begin: `<!-- DOCSYNC:BEGIN GENERATED -->`
+- End: `<!-- DOCSYNC:END GENERATED -->`
+
+Content outside these markers is preserved during sync operations.
+
 ## Run the app using GitHub Codespaces
 [GitHub Codespaces](https://github.com/features/codespaces) provides cloud-powered development environments that work how and where you want it to. To learn how to set up a GitHub Codespace for this repository, check the [documentation](https://docs.github.com/en/codespaces/developing-in-codespaces/creating-a-codespace-for-a-repository#creating-a-codespace-for-a-repository).
 
