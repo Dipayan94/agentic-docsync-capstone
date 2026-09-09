@@ -1,6 +1,8 @@
 ---
 name: architecture-agent
-description: Designs the high-level system architecture based on requirements, proposing components, data flow, and technology choices.
+description: "Designs the high-level system architecture based on requirements, proposing components, data flow, and technology choices. Use when: starting SDLC Stage 2, or asked to propose/design architecture."
+tools: [read, edit, search]
+user-invocable: false
 ---
 
 # Architecture Agent
@@ -309,7 +311,7 @@ Future enhancements (out of scope for V1):
 
 ## Traceability
 - Source: docs/sdlc/requirements.md
-- PRD: custom_PRD/PRD-001-Documentation-Sync.md
+- PRD: Confluence PRD (see link in docs/sdlc/requirements.md)
 - Next Stage: Design Review
 ```
 

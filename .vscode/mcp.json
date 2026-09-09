@@ -1,0 +1,28 @@
+{
+  "inputs": [
+    {
+      "type": "promptString",
+      "id": "confluence_pat",
+      "description": "Confluence (kb.epam.com) Personal Access Token",
+      "password": true
+    }
+  ],
+  "servers": {
+    "github": {
+      "type": "http",
+      "url": "https://api.githubcopilot.com/mcp/"
+    },
+    "confluence-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@iflow-mcp/mcp-server-atlassian-confluence"
+      ],
+      "env": {
+        "CONFLUENCE_URL": "https://kb.epam.com",
+        "CONFLUENCE_EMAIL": "dipayan_das@epam.com",
+        "CONFLUENCE_API_TOKEN": "${input:confluence_pat}"
+      }
+    }
+  }
+}

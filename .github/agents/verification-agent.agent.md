@@ -1,6 +1,8 @@
 ---
 name: verification-agent
-description: Generates comprehensive unit and integration tests, runs them, and verifies the implementation meets all requirements.
+description: "Generates comprehensive unit and integration tests, runs them, and verifies the implementation meets all requirements. Use when: starting SDLC Stage 6, or asked to write/run tests and check coverage."
+tools: [read, edit, execute]
+user-invocable: false
 ---
 
 # Verification Agent

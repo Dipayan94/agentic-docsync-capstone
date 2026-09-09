@@ -1,386 +1,65 @@
-# Orchestrator - Executable Entry Point
+# Orchestrator - Agentic SDLC Entry Point
 
 ## Overview
 
-The **orchestrator.py** script is the **executable entry point** for the Agentic SDLC workflow. It coordinates all 8 stages, manages approval gates, and integrates with GitHub Copilot.
+There is no orchestrator script. Orchestration is done **entirely through GitHub Copilot Custom Agents** (`.agent.md` files), invoked from Copilot Chat in Agent Mode. This matches the capstone objective: the SDLC pipeline must be driven through Copilot Agents/Prompts/Instructions/Skills/Hooks, not external scripts.
 
-## Entry Points (3 Ways to Execute)
+## The Agents
 
-### 1. Command Line (Terminal)
+All 9 agents live in [.github/agents/](.github/agents/) as `*.agent.md` files. **`sdlc_orchestrator` is the single entry point** (`user-invocable: true`) — it's the only one that shows up in the Copilot Chat **Agent picker**. The 8 stage agents are `user-invocable: false`: hidden from the picker, and only ever run as subagents that the orchestrator delegates to. Don't invoke them directly.
 
-```bash
-# Full workflow (all 8 stages)
-python3 orchestrator.py
+| Agent | Stage | Approval Gate | Output |
+|-------|-------|----------------|--------|
+| `requirements-agent` | 1. Requirements | ❌ No | `docs/sdlc/requirements.md` (from Confluence) |
+| `architecture-agent` | 2. Architecture | ✅ YES | `docs/sdlc/architecture.md` |
+| `design-review-agent` | 3. Design Review | ✅ YES | `docs/sdlc/design-review.md` |
+| `planning-agent` | 4. Implementation Planning | ❌ No | `docs/sdlc/impl-plan.md` |
+| `implementation-agent` | 5. Implementation | ❌ No | `docsync/*` |
+| `verification-agent` | 6. Verification | ❌ No (pass/fail) | `tests/*` + `docs/sdlc/verification-report.md` |
+| `pr-agent` | 7. Pull Request Creation | ❌ No | GitHub PR opened |
+| `code-review-agent` | 8. Code Review (on the live PR) | ✅ YES (approve publishing findings) | Inline PR review comments + `docs/sdlc/code-review-report.md` |
+| **`sdlc_orchestrator`** | Coordinates all of the above | — | **Entry point** — invokes the 8 stage agents as subagents |
 
-# Execute specific stage
-python3 orchestrator.py --stage 1
+## How to Run It
 
-# Execute range of stages
-python3 orchestrator.py --start 1 --end 4
+1. Open Copilot Chat, select the **Agent** picker, choose `sdlc_orchestrator`.
+2. Give it a Confluence PRD page URL/ID/title (its argument hint) — e.g. `@sdlc_orchestrator https://kb.epam.com/spaces/.../pages/.../PRD-001...`. If you don't provide one, it asks for it before Stage 1.
+3. It invokes each stage agent as a subagent in order, pausing at the 3 approval gates (Architecture, Design Review, Code Review) for your yes/no/feedback. Code review deliberately runs **after** the PR is opened so findings are posted as real inline comments on the PR — but it drafts its findings and asks you to approve **publishing** them before posting anything to GitHub. Merging the PR is always your separate, manual call.
 
-# Dry run (preview without execution)
-python3 orchestrator.py --dry-run
+To resume from a specific stage (e.g. after fixing something), tell `sdlc_orchestrator` which stage to start from — it's still the only agent you talk to.
 
-# List all stages
-python3 orchestrator.py --list
-```
+## External Integrations (MCP)
 
-### 2. VS Code Tasks (Cmd+Shift+P → "Run Task")
+Configured in [.vscode/mcp.json](.vscode/mcp.json):
+- **`confluence`** (via `mcp-atlassian`, PAT auth against kb.epam.com) — `requirements-agent` reads the PRD/User Story page from Confluence. The page URL/ID/title is a dynamic input each run, not fixed — pass it when invoking the agent, or it will ask.
+- **`github`** — `pr-agent` opens the Pull Request and `code-review-agent` posts inline review comments on it via the GitHub MCP server instead of `gh` CLI.
 
-Pre-configured tasks:
-- **orchestrator: Full SDLC Workflow** - Execute all stages
-- **orchestrator: Dry Run** - Preview workflow
-- **orchestrator: List Stages** - Show all stages
-- **orchestrator: Stage 1 - Requirements** - Run stage 1 only
-- **orchestrator: Stages 1-4 (Design Phase)** - Design stages
-- **orchestrator: Stages 5-8 (Implementation Phase)** - Implementation stages
+`github` is a remote HTTP server using OAuth (VS Code prompts you to sign in on first use). `confluence` runs locally via Docker (`ghcr.io/sooperset/mcp-atlassian`) and needs Docker installed; the first time it's used, VS Code will prompt you for your Confluence Personal Access Token (stored only for the session, never written to this file).
 
-**How to use:**
-1. Press `Cmd+Shift+P` (or `Ctrl+Shift+P` on Windows/Linux)
-2. Type "Run Task"
-3. Select "orchestrator: Full SDLC Workflow"
+## Local Dev Tasks
 
-### 3. NPM Scripts
-
-```bash
-# Full workflow
-npm run orchestrator
-
-# Dry run
-npm run orchestrator:dry-run
-
-# List stages
-npm run orchestrator:list
-
-# Specific stage
-npm run orchestrator:stage1
-
-# Phase execution
-npm run orchestrator:design          # Stages 1-4
-npm run orchestrator:implementation  # Stages 5-8
-```
-
-## How It Works
-
-### Workflow Execution Flow
-
-```
-You run: python3 orchestrator.py
-    ↓
-Orchestrator starts
-    ↓
-For each stage (1-8):
-    ├─ Check prerequisites (input files exist)
-    ├─ Read agent definition (.github/agents/<agent>.md)
-    ├─ Generate GitHub Copilot prompt
-    ├─ Display prompt to you
-    ├─ Wait for you to:
-    │   1. Copy prompt
-    │   2. Open VS Code Copilot Chat (Cmd+Shift+I)
-    │   3. Paste and send prompt
-    │   4. Wait for Copilot to complete
-    │   5. Return and confirm "yes"
-    ├─ If stage requires approval:
-    │   ├─ Show output file preview
-    │   └─ Ask: "Approve? (yes/no/feedback)"
-    └─ Continue to next stage
-    ↓
-All 8 stages completed
-    ↓
-Summary report
-```
-
-### GitHub Copilot Integration
-
-The orchestrator generates prompts like this:
-
-```
-@workspace Execute SDLC Stage 1: Requirements Analysis
-
-Agent Definition: .github/agents/requirements-agent.md
-
-Task: Act as the requirements analysis agent and execute the process defined in the agent file.
-
-Inputs: custom_PRD/PRD-001-Documentation-Sync.md
-Output: docs/sdlc/requirements.md
-
-Instructions:
-1. Read the agent definition from .github/agents/requirements-agent.md
-2. Read the input files: custom_PRD/PRD-001-Documentation-Sync.md
-3. Follow the process steps exactly as defined in the agent file
-4. Generate the output file: docs/sdlc/requirements.md
-5. Commit the changes with message format:
-   [Requirements Analysis] <description>
-
-   Generated by: requirements-agent
-   Input: custom_PRD/PRD-001-Documentation-Sync.md
-   Output: docs/sdlc/requirements.md
-
-Please execute this task following the agent definition precisely.
-```
-
-You copy this prompt → Paste in Copilot Chat → Copilot executes → You confirm completion.
+Two plain VS Code tasks remain in [.vscode/tasks.json](.vscode/tasks.json) for running the app and test suite locally (Cmd+Shift+P → "Run Task"):
+- **app: Run FastAPI (uvicorn)**
+- **test: Run pytest with coverage**
 
 ## Stages Overview
 
 | Stage | Name | Approval Gate | Output |
 |-------|------|---------------|--------|
-| 1 | Requirements Analysis | ❌ No | docs/sdlc/requirements.md |
-| 2 | Architecture Design | ✅ YES | docs/sdlc/architecture.md |
-| 3 | Design Review | ✅ YES | docs/sdlc/design-review.md |
-| 4 | Implementation Planning | ❌ No | docs/sdlc/impl-plan.md |
-| 5 | Implementation | ❌ No | docsync/* files |
-| 6 | Code Review | ✅ YES | docs/sdlc/code-review-report.md |
-| 7 | Verification & Testing | ❌ No | tests/* + verification-report.md |
-| 8 | Pull Request Creation | ✅ YES | GitHub PR |
-
-**Approval Gates:** 4 total (Stages 2, 3, 6, 8)
-
-## Example: Full Workflow Execution
-
-```bash
-$ python3 orchestrator.py
-
-======================================================================
-   Agentic SDLC Orchestrator
-   Automated Documentation Sync - Capstone Project
-======================================================================
-
-Executing stages 1 to 8
-Approval gates: 4 total
-
-
-Stage 1: Requirements Analysis
-──────────────────────────────────────────────────────────────────────
-Agent: requirements-agent.md
-Description: Extract and structure requirements from PRD
-Output: docs/sdlc/requirements.md
-Approval Required: No
-
-✓ All prerequisites met
-Invoking GitHub Copilot to execute Requirements Analysis...
-
-Copilot Prompt:
-──────────────────────────────────────────────────────────────────────
-@workspace Execute SDLC Stage 1: Requirements Analysis
-[... full prompt shown ...]
-──────────────────────────────────────────────────────────────────────
-
-ACTION REQUIRED:
-1. Copy the prompt above
-2. Open VS Code Copilot Chat (Cmd+Shift+I or Ctrl+Shift+I)
-3. Paste the prompt and send it
-4. Wait for Copilot to complete the task
-5. Come back here and confirm completion
-
-Has Copilot completed this stage? (yes/no/skip): yes
-
-✓ Stage 1 completed
-
-
-Stage 2: Architecture Design
-──────────────────────────────────────────────────────────────────────
-[... similar flow ...]
-
-✓ Stage 2 completed
-
-APPROVAL GATE 2
-======================================================================
-Stage: Architecture Design
-Output: docs/sdlc/architecture.md
-
-Generated Output Preview:
-──────────────────────────────────────────────────────────────────────
-# Architecture Document
-[... first 50 lines shown ...]
-──────────────────────────────────────────────────────────────────────
-
-Please review: docs/sdlc/architecture.md
-
-Approve this stage? (yes/no/feedback): yes
-
-✓ Stage approved
-
-[... continues through all 8 stages ...]
-
-Workflow Summary
-======================================================================
-
-✓ Stage 1: Requirements Analysis - completed
-✓ Stage 2: Architecture Design - completed
-✓ Stage 3: Design Review - completed
-✓ Stage 4: Implementation Planning - completed
-✓ Stage 5: Implementation - completed
-✓ Stage 6: Code Review - completed
-✓ Stage 7: Verification & Testing - completed
-✓ Stage 8: Pull Request Creation - completed
-
-Progress: 8/8 stages completed
-
-🎉 WORKFLOW COMPLETE! 🎉
-All stages executed successfully
-
-Next step: Review and merge the PR created in Stage 8
-```
-
-## Command Line Options
-
-```
-python3 orchestrator.py [OPTIONS]
-
-Options:
-  --stage N          Execute only stage N (1-8)
-  --start N          Start from stage N (default: 1)
-  --end N            End at stage N (default: 8)
-  --dry-run          Preview workflow without execution
-  --list             List all stages and exit
-  -h, --help         Show help message
-```
-
-## Examples
-
-```bash
-# List all stages
-python3 orchestrator.py --list
-
-# Preview workflow
-python3 orchestrator.py --dry-run
-
-# Execute just requirements stage
-python3 orchestrator.py --stage 1
-
-# Execute design phases only (stages 1-4)
-python3 orchestrator.py --start 1 --end 4
-
-# Execute implementation phases only (stages 5-8)
-python3 orchestrator.py --start 5 --end 8
-
-# Resume from stage 3
-python3 orchestrator.py --start 3
-```
-
-## Integration with VS Code
-
-### Keyboard Shortcuts
-
-You can add custom keyboard shortcuts in VS Code:
-
-1. Open Keyboard Shortcuts (Cmd+K Cmd+S)
-2. Search for "Run Task"
-3. Assign a shortcut (e.g., Cmd+Shift+O)
-
-Then you can press your shortcut → Select "orchestrator: Full SDLC Workflow"
-
-### Copilot Chat Integration
-
-When the orchestrator shows you a prompt:
-
-1. **Copy the prompt** (Cmd+C)
-2. **Open Copilot Chat:**
-   - Keyboard: `Cmd+Shift+I` (Mac) or `Ctrl+Shift+I` (Windows/Linux)
-   - Or click the Copilot icon in the sidebar
-3. **Paste and send** (Cmd+V then Enter)
-4. **Wait for Copilot** to complete the task
-5. **Go back to terminal** and type `yes`
-
-## Features
-
-### ✅ Prerequisites Check
-- Verifies input files exist before each stage
-- Verifies agent definitions are present
-- Fails fast with clear error messages
-
-### ✅ Copilot Prompt Generation
-- Creates optimized prompts for GitHub Copilot
-- Includes agent definition reference
-- Specifies inputs, outputs, and commit format
-
-### ✅ Approval Gates
-- 4 human approval checkpoints
-- Shows output preview (first 50 lines)
-- Options: yes/no/feedback
-- Feedback loop for revisions
-
-### ✅ Progress Tracking
-- Shows stage status (pending/in_progress/completed/failed/skipped)
-- Summary report at end
-- Clear visualization with colors and symbols
-
-### ✅ Flexible Execution
-- Run all stages or specific stage
-- Run range of stages
-- Dry-run mode for preview
-- Skip stages if needed
-
-## Troubleshooting
-
-### Issue: "Has Copilot completed this stage?"
-
-**Solution:** Go to VS Code, use Copilot Chat, paste the prompt, wait for completion, then return to terminal and type `yes`.
-
-### Issue: Agent definition not found
-
-**Solution:** Ensure you're in the repository root directory. Check `.github/agents/` exists.
-
-### Issue: Input file missing
-
-**Solution:** Ensure prerequisite stages are completed. For example, Stage 2 requires Stage 1's output.
-
-### Issue: Copilot doesn't follow the agent definition
-
-**Solution:** Make sure the prompt includes `@workspace` and references the agent file path clearly.
-
-## Next Steps
-
-After running the orchestrator:
-
-1. **Review artifacts** in `docs/sdlc/`
-2. **Check git commits** - should see one per stage
-3. **Review the PR** created in Stage 8
-4. **Merge the PR** if approved
-5. **Demo the workflow** to judges
-
-## Tips for Demo
-
-1. **Start with dry-run** to show the stages: `python3 orchestrator.py --dry-run`
-2. **Execute one stage live** to demonstrate: `python3 orchestrator.py --stage 1`
-3. **Show the approval gate** when it prompts
-4. **Show git history** after completion: `git log --oneline`
-5. **Show SDLC artifacts** in `docs/sdlc/`
-
-## Why This Design?
-
-**Q: Why not fully automate with GitHub Copilot API?**
-A: Human approval gates are a key feature - we want human-in-the-loop for quality control.
-
-**Q: Why Python script instead of shell script?**
-A: Better error handling, colored output, structured data, easier to maintain.
-
-**Q: Why VS Code tasks?**
-A: Native integration - users can run from Command Palette without remembering CLI commands.
-
-**Q: Why NPM scripts too?**
-A: Familiarity - many developers use npm, provides alternative entry point.
-
----
-
-## Quick Start
-
-```bash
-# 1. List stages to understand workflow
-python3 orchestrator.py --list
-
-# 2. Preview execution (dry run)
-python3 orchestrator.py --dry-run
-
-# 3. Execute full workflow
-python3 orchestrator.py
-
-# 4. Follow the prompts, use Copilot Chat for each stage
-
-# 5. Review completion
-git log --oneline
-ls -la docs/sdlc/
-```
-
-**Ready to execute!** 🚀
+| 1 | Requirements Analysis | ❌ No | `docs/sdlc/requirements.md` (from Confluence) |
+| 2 | Architecture Design | ✅ YES | `docs/sdlc/architecture.md` |
+| 3 | Design Review | ✅ YES | `docs/sdlc/design-review.md` |
+| 4 | Implementation Planning | ❌ No | `docs/sdlc/impl-plan.md` |
+| 5 | Implementation | ❌ No | `docsync/*` files |
+| 6 | Verification & Testing | ❌ No (pass/fail) | `tests/*` + `docs/sdlc/verification-report.md` |
+| 7 | Pull Request Creation | ❌ No | GitHub PR opened (via GitHub MCP) |
+| 8 | Code Review | ✅ YES (approve publishing findings) | Inline review comments posted on the PR + `docs/sdlc/code-review-report.md` |
+
+**Approval Gates:** 3 total (Stages 2, 3, 8). Code review intentionally runs **after** the PR is opened so findings are posted as real GitHub PR review comments; Stage 8's approval is for *publishing those findings*, not for merging — merging the PR is always a separate manual step the human does on GitHub.
+
+## Demo Tips
+
+1. Start with the `requirements-agent` alone to show it pulling the PRD live from Confluence.
+2. Run the full pipeline via `sdlc_orchestrator` through Stage 7, then show the opened PR on GitHub.
+3. Run `code-review-agent` and refresh the PR in the browser to show inline review comments appearing in real time.
+4. Show `docs/sdlc/` and `git log --oneline` for traceability from PRD → reviewed PR (merge is a manual step you do afterwards).
