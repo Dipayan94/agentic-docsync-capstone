@@ -1,5 +1,127 @@
+# DocSync - API Documentation Generator
+
+DocSync is a CLI tool that generates and updates markdown API documentation from OpenAPI JSON files.
+
+## Features
+
+- Generate markdown documentation from OpenAPI 3.x schemas
+- Preserve custom documentation content using marker-based insertion
+- Deterministic output with stable sorting
+- Support for dry-run mode
+- Multiple report formats (markdown and JSON)
+
+## Installation
+
+```bash
+pip install -r requirements.txt
+```
+
+## Usage
+
+### Basic Sync Command
+
+```bash
+python -m docsync sync --schema <openapi.json> --docs <existing_docs.md> --output <output.md>
+```
+
+### Command-Line Options
+
+- `--schema`: Path to OpenAPI JSON schema file (required)
+- `--docs`: Path to existing documentation file (required)
+- `--output`: Path to output documentation file (required)
+- `--dry-run`: Preview changes without writing output file
+- `--verbose`: Enable verbose output
+- `--format`: Report output format - `markdown` (default) or `json`
+
+### Examples
+
+#### Generate documentation with dry-run
+
+```bash
+python -m docsync sync \
+  --schema openapi.json \
+  --docs docs/api.md \
+  --output docs/api.md \
+  --dry-run
+```
+
+#### Generate documentation with JSON report
+
+```bash
+python -m docsync sync \
+  --schema openapi.json \
+  --docs docs/api.md \
+  --output docs/api.md \
+  --format json
+```
+
+## Marker Policy
+
+DocSync uses HTML comment markers to preserve custom documentation content:
+
+- **Markers**: `<!-- DOCSYNC:BEGIN GENERATED -->` and `<!-- DOCSYNC:END GENERATED -->`
+- **Both markers exist**: Content between markers is replaced with new generated content
+- **No markers**: Generated content is appended at the end of the file
+- **Malformed markers**: Operation fails with exit code 2 (validation failure)
+
+### Example Documentation Structure
+
+```markdown
+# My API Documentation
+
+This is my custom introduction that won't be overwritten.
+
+<!-- DOCSYNC:BEGIN GENERATED -->
+Generated API documentation will appear here
+<!-- DOCSYNC:END GENERATED -->
+
+## Additional Notes
+
+More custom content that will be preserved.
+```
+
+## Exit Codes
+
+- `0`: Success
+- `1`: Operational error (e.g., file not found, cannot read file)
+- `2`: Validation failure (e.g., invalid JSON, malformed markers, missing required fields)
+
+## Testing
+
+Run the test suite:
+
+```bash
+python -m pytest -q
+```
+
+## Development
+
+This project structure:
+
+```
+docsync/
+  __init__.py
+  __main__.py
+  cli.py              # CLI entrypoint
+  exceptions.py       # Custom exceptions
+  models.py           # Data models
+  openapi_parser.py   # OpenAPI parsing logic
+  markdown_generator.py  # Markdown generation
+  markers.py          # Marker-based merge logic
+  reporting.py        # Report generation
+tests/
+  fixtures/
+    sample_openapi.json
+  test_openapi_parser.py
+  test_markdown_generator.py
+  test_markers.py
+  test_cli.py
+```
+
+---
+
 # Python/FastAPI Tutorial for Visual Studio Code
-This sample contains the completed program from the tutorial: [FastAPI in Visual Studio Code](https://code.visualstudio.com/docs/python/tutorial-fastapi). Immediate steps are not included. 
+This sample contains the completed program from the tutorial: [FastAPI in Visual Studio Code](https://code.visualstudio.com/docs/python/tutorial-fastapi). Immediate steps are not included.
 
 ## Run the app using GitHub Codespaces
 [GitHub Codespaces](https://github.com/features/codespaces) provides cloud-powered development environments that work how and where you want it to. To learn how to set up a GitHub Codespace for this repository, check the [documentation](https://docs.github.com/en/codespaces/developing-in-codespaces/creating-a-codespace-for-a-repository#creating-a-codespace-for-a-repository).
