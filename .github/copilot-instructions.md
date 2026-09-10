@@ -5,8 +5,8 @@
 This is a capstone project demonstrating an **Agentic SDLC Pipeline** using GitHub Copilot. We are building an **Automated Documentation Sync** feature for a FastAPI application.
 
 **Key Principles:**
-- AI agents drive each SDLC stage (Requirements → Architecture → Design Review → Planning → Implementation → Code Review → Verification → PR)
-- Humans approve at critical gates (Architecture, Design Review, Code Review, PR Merge)
+- AI agents drive each SDLC stage (Requirements → Architecture → Design Review → Planning → Implementation → Verification → PR → Code Review)
+- Humans approve at critical gates (Architecture, Design Review, Code Review findings publish)
 - All decisions are traced through git commits and documentation
 - Keep it simple, deterministic, and demo-ready
 
@@ -22,7 +22,7 @@ This is a capstone project demonstrating an **Agentic SDLC Pipeline** using GitH
 ### Capstone Structure
 ```
 .github/agents/          # AI agent definitions
-custom_PRD/              # Input requirements (PRD files)
+custom_PRD/              # Fallback/offline copy of PRD (source of truth is Confluence)
 docs/sdlc/               # SDLC artifacts (requirements, architecture, etc.)
 docs/api/                # Generated API documentation
 docsync/                 # Feature implementation (to be created)
@@ -64,7 +64,7 @@ tests/                   # Test suite (to be created)
 
 When acting as a specialized agent:
 
-1. **Read your agent definition** from `.github/agents/<agent-name>.md`
+1. **Read your agent definition** from `.github/agents/<agent-name>.agent.md`
 2. **Read inputs** specified in the agent definition
 3. **Follow the process** outlined in the agent definition
 4. **Generate outputs** as specified
@@ -163,14 +163,14 @@ Some stages require human approval before proceeding:
 
 | Stage | Approval Required | What to Review |
 |-------|-------------------|----------------|
-| Requirements | ❌ No | Derived from PRD |
+| Requirements | ❌ No | Derived from Confluence PRD |
 | Architecture | ✅ YES | Is architecture sound? |
 | Design Review | ✅ YES | Are risks acceptable? |
 | Planning | ❌ No | Derived from architecture |
-| Implementation | ❌ No | Code review comes next |
-| Code Review | ✅ YES | Is code quality good? |
+| Implementation | ❌ No | Code review comes after the PR is opened |
 | Verification | ❌ No | Tests pass or fail |
-| PR Creation | ✅ YES | Ready to merge? |
+| PR Creation | ❌ No | PR opened; reviewed in the next stage |
+| Code Review | ✅ YES | Is code quality good? Approve publishing findings as PR comments? (merging is a separate manual step) |
 
 **At approval gates:**
 1. Agent generates artifact
@@ -189,7 +189,7 @@ The capstone is successful when:
 - ✅ Git history shows clear progression
 - ✅ All tests pass
 - ✅ Feature works (docsync can sync docs)
-- ✅ PR is created and mergeable
+- ✅ PR is created and reviewed (ready for the human to merge)
 - ✅ Documentation is complete
 
 ---

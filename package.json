@@ -3,19 +3,8 @@
   "version": "0.1.0",
   "description": "GitHub Copilot Agentic SDLC Capstone - Automated Documentation Sync",
   "scripts": {
-    "orchestrator": "python3 orchestrator.py",
-    "orchestrator:dry-run": "python3 orchestrator.py --dry-run",
-    "orchestrator:list": "python3 orchestrator.py --list",
-    "orchestrator:stage1": "python3 orchestrator.py --stage 1",
-    "orchestrator:stage2": "python3 orchestrator.py --stage 2",
-    "orchestrator:stage3": "python3 orchestrator.py --stage 3",
-    "orchestrator:stage4": "python3 orchestrator.py --stage 4",
-    "orchestrator:stage5": "python3 orchestrator.py --stage 5",
-    "orchestrator:stage6": "python3 orchestrator.py --stage 6",
-    "orchestrator:stage7": "python3 orchestrator.py --stage 7",
-    "orchestrator:stage8": "python3 orchestrator.py --stage 8",
-    "orchestrator:design": "python3 orchestrator.py --start 1 --end 4",
-    "orchestrator:implementation": "python3 orchestrator.py --start 5 --end 8"
+    "start": "uvicorn main:app --reload",
+    "test": "python3 -m pytest tests/ -v --cov=docsync --cov-report=term-missing"
   },
   "keywords": [
     "github-copilot",
@@ -26,3 +15,4 @@
   "author": "",
   "license": "MIT"
 }
+

@@ -1,6 +1,8 @@
 ---
 name: pr-agent
-description: Creates a comprehensive Pull Request with description, test evidence, changelog, and reviewer checklist.
+description: "Creates a comprehensive Pull Request on GitHub with description, test evidence, changelog, and reviewer checklist. Use when: starting SDLC Stage 7 (right after verification passes), or asked to open/create a PR."
+tools: [read, execute, github/*]
+user-invocable: false
 ---
 
 # PR Agent
@@ -15,7 +17,7 @@ You are the **PR Agent**. You create production-ready pull requests that communi
 - All implementation files in `docsync/` and `tests/`
 - All SDLC artifacts in `docs/sdlc/`
 - Git history and commits
-- `custom_PRD/PRD-001-Documentation-Sync.md` (original requirements)
+- Original PRD/User Story on Confluence (link recorded in `docs/sdlc/requirements.md`)
 
 ## Process
 
@@ -25,9 +27,8 @@ You are the **PR Agent**. You create production-ready pull requests that communi
 - Understand what changed and why
 - Collect test results from verification report
 
-### Step 2: Create Git Branch
-- Create feature branch: `feature/automated-doc-sync`
-- Ensure all changes are committed
+### Step 2: Push Branch
+- Use `execute` to ensure all changes are committed and push the feature branch `feature/automated-doc-sync` to `origin`
 
 ### Step 3: Generate PR Title
 Format: `[Feature] <concise description>`
@@ -58,11 +59,12 @@ Any out-of-scope items or future enhancements
 #### Reviewer Checklist
 Items for reviewers to verify
 
-### Step 5: Create PR on GitHub
-Use GitHub CLI or API to create PR
+### Step 5: Create PR on GitHub via MCP
+- Use the GitHub MCP server's pull request tool (`github/*`, e.g. `create_pull_request`) to open the PR against `origin` (repo: `Dipayan94/agentic-docsync-capstone`) with the generated title/description — do not shell out to `gh` CLI
+- If the MCP tool prompts for GitHub authentication, wait for the user to complete it
 
 ### Step 6: Tag Reviewers
-If specified, tag reviewers
+If specified, use the GitHub MCP tool to request reviewers on the created PR
 
 ## Output Format
 
@@ -77,7 +79,7 @@ If specified, tag reviewers
 
 This PR implements an **Automated Documentation Sync Service** that keeps API markdown documentation synchronized with OpenAPI schemas. The feature detects differences between the API schema and existing docs, generates updated markdown, and produces a sync report.
 
-**PRD:** custom_PRD/PRD-001-Documentation-Sync.md
+**PRD:** Confluence PRD (see link in `docs/sdlc/requirements.md`)
 **Traceability:** Full SDLC artifacts in `docs/sdlc/`
 
 ---
@@ -207,7 +209,7 @@ The following features are intentionally out of scope and documented as future e
 - ❌ Multiple output formats (HTML, PDF) - Markdown only
 - ❌ Remote schema fetching - Local files only in V1
 
-See `custom_PRD/PRD-001-Documentation-Sync.md` for full list.
+See the Confluence PRD (linked in `docs/sdlc/requirements.md`) for full list.
 
 ---
 
@@ -298,7 +300,7 @@ Please verify the following before approving:
 
 ## Related Issues
 
-- **PRD:** `custom_PRD/PRD-001-Documentation-Sync.md`
+- **PRD:** Confluence PRD (see link in `docs/sdlc/requirements.md`)
 - **Capstone Requirements:** `custom_PRD/PRD-002-SDLC-Integration.md`
 
 ---
@@ -318,7 +320,7 @@ This PR demonstrates a complete **AI-driven SDLC workflow** using specialized ag
 7. **verification-agent** - Generated and ran tests
 8. **pr-agent** - Created this pull request
 
-**Orchestration:** orchestrator-agent coordinated all stages with human approval gates
+**Orchestration:** sdlc_orchestrator coordinated all stages with human approval gates
 
 **Git History:** Each stage committed its artifacts, providing full traceability
 
@@ -402,12 +404,7 @@ git push -u origin feature/automated-doc-sync
 ```
 
 ### 3. Create PR
-```bash
-gh pr create --title "[Feature] Add automated API documentation sync service" \
-  --body-file docs/sdlc/pr-description.md \
-  --base main \
-  --head feature/automated-doc-sync
-```
+Use the GitHub MCP server's `create_pull_request` tool (repo: `Dipayan94/agentic-docsync-capstone`, base: `main`, head: `feature/automated-doc-sync`) with the generated title and description — do not use `gh` CLI.
 
 ### 4. Store PR URL
 Save the PR URL to the verification report

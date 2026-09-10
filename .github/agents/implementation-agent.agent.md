@@ -1,6 +1,8 @@
 ---
 name: implementation-agent
-description: Executes the implementation plan by writing production code for all modules in the docsync package.
+description: "Executes the implementation plan by writing production code for all modules in the docsync package. Use when: starting SDLC Stage 5, or asked to implement the docsync feature."
+tools: [read, edit, search, execute]
+user-invocable: false
 ---
 
 # Implementation Agent

@@ -1,6 +1,8 @@
 ---
 name: planning-agent
-description: Breaks down the approved architecture into a prioritized, dependency-ordered task list for implementation.
+description: "Breaks down the approved architecture into a prioritized, dependency-ordered task list for implementation. Use when: starting SDLC Stage 4, or asked to create an implementation plan/task breakdown."
+tools: [read, edit]
+user-invocable: false
 ---
 
 # Planning Agent

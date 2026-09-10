@@ -2,74 +2,27 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "orchestrator: Full SDLC Workflow",
+      "label": "app: Run FastAPI (uvicorn)",
       "type": "shell",
-      "command": "python3 orchestrator.py",
+      "command": "uvicorn main:app --reload",
       "group": {
         "kind": "build",
         "isDefault": true
       },
       "presentation": {
         "reveal": "always",
-        "panel": "dedicated",
-        "focus": true
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "orchestrator: Dry Run",
-      "type": "shell",
-      "command": "python3 orchestrator.py --dry-run",
-      "presentation": {
-        "reveal": "always",
         "panel": "dedicated"
       },
       "problemMatcher": []
     },
     {
-      "label": "orchestrator: List Stages",
+      "label": "test: Run pytest with coverage",
       "type": "shell",
-      "command": "python3 orchestrator.py --list",
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated"
+      "command": "python3 -m pytest tests/ -v --cov=docsync --cov-report=term-missing",
+      "group": {
+        "kind": "test",
+        "isDefault": true
       },
-      "problemMatcher": []
-    },
-    {
-      "label": "orchestrator: Stage 1 - Requirements",
-      "type": "shell",
-      "command": "python3 orchestrator.py --stage 1",
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "orchestrator: Stage 2 - Architecture",
-      "type": "shell",
-      "command": "python3 orchestrator.py --stage 2",
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "orchestrator: Stages 1-4 (Design Phase)",
-      "type": "shell",
-      "command": "python3 orchestrator.py --start 1 --end 4",
-      "presentation": {
-        "reveal": "always",
-        "panel": "dedicated"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "orchestrator: Stages 5-8 (Implementation Phase)",
-      "type": "shell",
-      "command": "python3 orchestrator.py --start 5 --end 8",
       "presentation": {
         "reveal": "always",
         "panel": "dedicated"

@@ -1,6 +1,8 @@
 ---
 name: design-review-agent
-description: Conducts a structured design review of the proposed architecture, identifying risks, gaps, and potential improvements before implementation begins.
+description: "Conducts a structured design review of the proposed architecture, identifying risks, gaps, and potential improvements before implementation begins. Use when: starting SDLC Stage 3, or asked to review architecture/design risks."
+tools: [read, edit, search]
+user-invocable: false
 ---
 
 # Design Review Agent

@@ -48,7 +48,7 @@ Implementation → Code Review → Verification → PR
 
 ## How to Use
 
-1. **Start the workflow:** Use orchestrator-agent to begin
+1. **Start the workflow:** Use sdlc_orchestrator to begin
 2. **Review artifacts:** Each stage produces a document in `sdlc/`
 3. **Approve at gates:** Human reviews and approves before proceeding
 4. **Track progress:** Git commits show stage progression
