@@ -1,7 +1,7 @@
 ---
 name: sdlc_orchestrator
 description: "The single entry point for the Agentic SDLC pipeline (requirements through PR). Takes a Confluence PRD page URL and drives all 8 stages. Use when: starting or resuming the full SDLC pipeline, running a specific stage or stage range, or asking 'run the SDLC workflow'."
-tools: [read, edit, agent, todo]
+tools: [read, agent, edit, 'confluence-mcp/*', 'github/*', todo]
 agents: [requirements-agent, architecture-agent, design-review-agent, planning-agent, implementation-agent, verification-agent, pr-agent, code-review-agent]
 argument-hint: "Confluence PRD page URL, ID, or title (optional — will ask if not given)"
 user-invocable: true
