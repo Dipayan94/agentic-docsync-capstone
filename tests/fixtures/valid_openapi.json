@@ -1,0 +1,40 @@
+{
+  "openapi": "3.0.3",
+  "info": {"title": "Sample API", "version": "1.0.0"},
+  "paths": {
+    "/users": {
+      "get": {
+        "summary": "List users",
+        "description": "Returns all users",
+        "parameters": [
+          {"name": "limit", "in": "query", "required": false, "schema": {"type": "integer"}, "description": "Max results"}
+        ],
+        "responses": {
+          "200": {"description": "OK"},
+          "500": {"description": "Server error"}
+        }
+      },
+      "post": {
+        "summary": "Create user",
+        "parameters": [
+          {"name": "X-Request-Id", "in": "header", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "201": {"description": "Created"}
+        }
+      }
+    },
+    "/users/{id}": {
+      "get": {
+        "summary": "Get user by id",
+        "parameters": [
+          {"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}
+        ],
+        "responses": {
+          "200": {"description": "OK"},
+          "404": {"description": "Not found"}
+        }
+      }
+    }
+  }
+}
