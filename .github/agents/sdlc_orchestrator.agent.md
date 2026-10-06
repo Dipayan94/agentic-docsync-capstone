@@ -121,172 +121,33 @@ If an agent fails:
 
 ## Success Criteria
 
-- All 8 SDLC stages complete successfully
-- Each stage produces the expected artifact
-- Git history shows clear progression
-- All tests pass
-- Feature works (docsync can sync docs)
-- PR is created and reviewed (ready for the human to merge)
-- Documentation is complete
+- All 8 stages executed in order
+- 3 approval gates handled correctly (Architecture, Design Review, Code Review findings publish)
+- All artifacts generated and committed
+- PR created and reviewed successfully
+- No stages skipped (unless human decides to abort)
 
-## Common Patterns
+## Output
 
-### Reading Files
-```python
-from pathlib import Path
-
-def read_file(path: str) -> str:
-    return Path(path).read_text(encoding="utf-8")
+At the end, provide a summary:
 ```
+SDLC Summary
+============
+✅ Stage 1: Requirements - Complete
+✅ Stage 2: Architecture - Complete (Approved)
+✅ Stage 3: Design Review - Complete (Approved)
+✅ Stage 4: Planning - Complete
+✅ Stage 5: Implementation - Complete
+✅ Stage 6: Verification - Complete (All tests passed)
+✅ Stage 7: PR Creation - Complete (PR #X opened)
+✅ Stage 8: Code Review - Complete (Findings approved and published to PR #X)
 
-### Writing Files
-```python
-from pathlib import Path
+Git commits: 8
+Approvals received: 3
+Duration: <time>
 
-def write_file(path: str, content: str) -> None:
-    Path(path).parent.mkdir(parents=True, exist_ok=True)
-    Path(path).write_text(content, encoding="utf-8")
+Next step: Merging PR #X is a manual decision for the human — not performed by this pipeline
 ```
-
-### Parsing OpenAPI
-```python
-import json
-
-def load_openapi(path: str) -> dict:
-    with open(path, 'r') as f:
-        return json.load(f)
-```
-
-### Error Handling
-```python
-def process_file(path: str) -> dict:
-    try:
-        with open(path, 'r') as f:
-            return json.load(f)
-    except FileNotFoundError:
-        raise FileNotFoundError(f"File not found: {path}")
-    except json.JSONDecodeError as e:
-        raise ValueError(f"Invalid JSON in {path}: {e}")
-```
-
-## Dependencies
-
-### Current Dependencies
-```
-fastapi, uvicorn, redis, pydantic, anyio, starlette
-```
-
-### Allowed New Dependencies (for docsync)
-```
-pyyaml          # For YAML parsing (if needed)
-pytest          # Already available
-pytest-cov      # For coverage
-click           # For CLI (if not using argparse)
-```
-
-### Prohibited Dependencies
-- No databases (SQLite, PostgreSQL, etc.)
-- No authentication libraries
-- No cloud SDKs
-- No web frameworks beyond FastAPI
-- No heavy ML/AI libraries
-
-Keep it lightweight and focused.
-
-## OpenAPI Schema Reference
-
-The FastAPI app auto-generates OpenAPI 3.1.0 schema at:
-- **Endpoint:** `http://127.0.0.1:8000/openapi.json`
-- **Swagger UI:** `http://127.0.0.1:8000/docs`
-
-Current endpoints:
-- `GET /` - Home
-- `POST /items/{item_name}/{quantity}` - Add item
-- `GET /items/{item_id}` - Get item by ID
-- `GET /items` - List all items
-- `DELETE /items/{item_id}` - Delete item
-- `DELETE /items/{item_id}/{quantity}` - Remove quantity
-
----
-
-## Human Approval Gates
-
-Some stages require human approval before proceeding:
-
-| Stage | Approval Required | What to Review |
-|-------|-------------------|----------------|
-| Requirements | ❌ No | Derived from Confluence PRD |
-| Architecture | ✅ YES | Is architecture sound? |
-| Design Review | ✅ YES | Are risks acceptable? |
-| Planning | ❌ No | Derived from architecture |
-| Implementation | ❌ No | Code review comes after the PR is opened |
-| Verification | ❌ No | Tests pass or fail |
-| PR Creation | ❌ No | PR opened; reviewed in the next stage |
-| Code Review | ✅ YES | Is code quality good? Approve publishing findings as PR comments? (merging is a separate manual step) |
-
-**At approval gates:**
-1. Agent generates artifact
-2. Agent prompts: "Review [artifact]. Approve to proceed? (yes/no)"
-3. Human reviews and responds
-4. If "no", agent asks for feedback and revises
-5. If "yes", workflow continues
-
----
-
-## Success Criteria
-
-The capstone is successful when:
-- ✅ All 8 SDLC stages complete successfully
-- ✅ Each stage produces the expected artifact
-- ✅ Git history shows clear progression
-- ✅ All tests pass
-- ✅ Feature works (docsync can sync docs)
-- ✅ PR is created and reviewed (ready for the human to merge)
-- ✅ Documentation is complete
-
----
-
-## Common Patterns
-
-### Reading Files
-```python
-from pathlib import Path
-
-def read_file(path: str) -> str:
-    return Path(path).read_text(encoding="utf-8")
-```
-
-### Writing Files
-```python
-from pathlib import Path
-
-def write_file(path: str, content: str) -> None:
-    Path(path).parent.mkdir(parents=True, exist_ok=True)
-    Path(path).write_text(content, encoding="utf-8")
-```
-
-### Parsing OpenAPI
-```python
-import json
-
-def load_openapi(path: str) -> dict:
-    with open(path, 'r') as f:
-        return json.load(f)
-```
-
-### Error Handling
-```python
-def process_file(path: str) -> dict:
-    try:
-        with open(path, 'r') as f:
-            return json.load(f)
-    except FileNotFoundError:
-        raise FileNotFoundError(f"File not found: {path}")
-    except json.JSONDecodeError as e:
-        raise ValueError(f"Invalid JSON in {path}: {e}")
-```
-
----
 
 ## Notes
 
