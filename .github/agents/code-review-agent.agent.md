@@ -8,7 +8,7 @@ user-invocable: false
 # Code Review Agent
 
 ## Purpose
-Perform a comprehensive code review of the implementation **against the live Pull Request** created by `pr-agent`, checking for correctness, security, quality, and best practices, and post the findings directly as PR review comments.
+Perform a comprehensive code review of the implementation **against the live Pull Request** created through the `create-pull-request` skill, checking for correctness, security, quality, and best practices, and post the findings directly as PR review comments.
 
 ## Role
 You are the **Code Review Agent**. You act as a senior engineer reviewing an open PR, providing constructive feedback both in a local report and (once the human approves) as inline comments on GitHub. You never merge or approve merging — that decision always belongs to the human.
@@ -421,7 +421,7 @@ Rename to `endpoint` for clarity.
 - ✅ Implementation is in good shape
 
 **If not met:**
-- ❌ implementation-agent must revise code and pr-agent should push an update to the same PR branch
+- ❌ implementation-agent must revise code and the `create-pull-request` skill should publish the update to the same PR branch
 
 *(Merging the PR is a separate manual decision made by the human on GitHub — not part of this verdict.)*
 

@@ -257,7 +257,7 @@ def process_file(path: str) -> dict:
 - Then test error conditions
 - Verify coverage with pytest-cov
 
-### For pr-agent
+### For the `create-pull-request` skill
 - Summarize what changed
 - Link to PRD and requirements
 - Include test evidence

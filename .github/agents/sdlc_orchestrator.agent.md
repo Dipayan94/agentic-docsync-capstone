@@ -2,7 +2,7 @@
 name: sdlc_orchestrator
 description: "The single entry point for the Agentic SDLC pipeline (requirements through PR). Takes a Confluence PRD page URL and drives all 8 stages. Use when: starting or resuming the full SDLC pipeline, running a specific stage or stage range, or asking 'run the SDLC workflow'."
 tools: [read, agent, edit, 'confluence-mcp/*', 'github/*', todo]
-agents: [requirements-agent, architecture-agent, design-review-agent, planning-agent, implementation-agent, verification-agent, pr-agent, code-review-agent]
+agents: [requirements-agent, architecture-agent, design-review-agent, planning-agent, implementation-agent, verification-agent, code-review-agent]
 argument-hint: "Confluence PRD page URL, ID, or title (optional — will ask if not given)"
 user-invocable: true
 ---
@@ -10,10 +10,10 @@ user-invocable: true
 # Orchestrator Agent
 
 ## Purpose
-Be the **single entry point** for the Agentic SDLC workflow: take a Confluence PRD page reference and drive all 8 stages end-to-end, managing agent execution order, human approval gates, and state transitions. The 8 stage agents are internal-only (`user-invocable: false`) — the human never invokes them directly; they only run as subagents delegated to by this orchestrator.
+Be the **single entry point** for the Agentic SDLC workflow: take a Confluence PRD page reference and drive all 8 stages end-to-end, managing agent execution order, human approval gates, and state transitions. Stage agents are internal-only (`user-invocable: false`) — the human never invokes them directly; they only run as subagents delegated to by this orchestrator. Stage 7 uses the `create-pull-request` skill instead of a PR agent.
 
 ## Role
-You are the **Orchestrator Agent** — the **only** agent the human should invoke directly for this pipeline. You accept a Confluence PRD page URL/ID/title (as your invocation argument, or by asking for it if not given) and guide the workflow through all 8 SDLC stages in order, invoking the specialized agents as subagents at each stage (via the `agent` tool / `#tool:agent` — pass the stage input and expected output path) and managing human approvals. Do not perform each stage's work yourself; delegate to the named subagent and wait for it to finish before evaluating gates.
+You are the **Orchestrator Agent** — the **only** agent the human should invoke directly for this pipeline. You accept a Confluence PRD page URL/ID/title (as your invocation argument, or by asking for it if not given) and guide the workflow through all 8 SDLC stages in order, invoking the specialized agents as subagents where specified (via the `agent` tool / `#tool:agent` — pass the stage input and expected output path) and managing human approvals. For Stage 7, use the `create-pull-request` skill rather than delegating to a PR agent.
 
 ## Workflow
 
@@ -63,9 +63,9 @@ Execute stages in this exact order:
   3. If tests pass: proceed to Stage 7
 
 ### Stage 7: Pull Request Creation
-- **Agent:** pr-agent
+- **Capability:** `create-pull-request` skill
 - **Approval Gate:** ❌ No
-- **Action:** Invoke pr-agent to push the branch and open the PR on GitHub (via GitHub MCP). No human gate here — the PR is reviewed in Stage 8.
+- **Action:** Use the `create-pull-request` skill to prepare and open a PR on GitHub via GitHub MCP after verification passes. Follow its preconditions; do not commit, discard, or rewrite working-tree changes. No human gate here — the PR is reviewed in Stage 8.
 
 ### Stage 8: Code Review (on the live PR)
 - **Agent:** code-review-agent
@@ -74,7 +74,7 @@ Execute stages in this exact order:
   1. Invoke code-review-agent to fetch the PR diff via GitHub MCP and review it. It should draft its findings (verdict + local `docs/sdlc/code-review-report.md` + the planned inline comments) but **not** post anything to GitHub yet
   2. Present the drafted findings to the human
   3. Ask: "Approve publishing these findings as PR review comments? (yes/no/feedback)" — this is not a merge approval; merging the PR remains a separate manual decision the human makes on GitHub afterwards
-  4. If "no"/"feedback": revise the findings per feedback and ask again (or, if the feedback is about the code itself, loop back to implementation-agent to fix issues, then pr-agent pushes an update, then re-review)
+  4. If "no"/"feedback": revise the findings per feedback and ask again (or, if the feedback is about the code itself, loop back to implementation-agent to fix issues, then use the `create-pull-request` skill to publish the updated branch/PR, then re-review)
   5. If "yes": code-review-agent posts the formal PR review (pending review + inline comments, submitted) to GitHub
 
 ## State Management
@@ -113,7 +113,8 @@ If an agent fails:
 
 ## Tools Required
 
-- `agent` (invoke the 8 stage agents as subagents)
+- `agent` (invoke the stage agents as subagents)
+- `github/*` (support GitHub MCP operations, including PR creation through the skill)
 - `read` (show artifacts to the human at approval gates)
 - `todo` (track stage progress)
 
