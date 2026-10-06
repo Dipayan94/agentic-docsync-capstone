@@ -7,14 +7,14 @@ with OpenAPI schemas.
 
 __version__ = "0.1.0"
 
-from .models import Endpoint, Parameter, Response, Schema, Change, ChangeType, ValidationError
+from .models import Changes, Document, DocumentBlock, Endpoint, Parameter, Response, Schema
 
 __all__ = [
+    "Changes",
+    "Document",
+    "DocumentBlock",
     "Endpoint",
     "Parameter",
     "Response",
     "Schema",
-    "Change",
-    "ChangeType",
-    "ValidationError",
 ]

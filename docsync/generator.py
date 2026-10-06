@@ -1,244 +1,166 @@
-"""
-Markdown documentation generator: Convert OpenAPI schemas to formatted docs.
+"""Render synchronized Markdown and independent change reports."""
 
-This module implements BLOCKER #3 (Markdown Format Specification):
-- Index file: docs/api/index.md (overview + table of contents)
-- Per-endpoint files: docs/api/GET_items.md, docs/api/POST_items_{id}.md, etc.
-- Structure: [Summary] [Description] [Parameters] [Responses] [Examples]
-"""
+import json
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Tuple
 
-from pathlib import Path
-from typing import Dict, List
-from docsync.models import Endpoint, Schema, Parameter, Response
-from docsync.utils import get_logger, write_file, ensure_dir
+from .diff_engine import endpoints_equal
+from .markdown_parser import ENDPOINT_END, ENDPOINT_START, MANAGED_END, MANAGED_START, encode_endpoint
+from .models import Changes, Document, DocumentBlock, Endpoint
 
 
-logger = get_logger(__name__)
+def _identity(endpoint: Endpoint) -> Tuple[str, str]:
+    return endpoint.path, endpoint.method.upper()
 
 
-class MarkdownFormatter:
-    """Generates markdown documentation from schema."""
+def _json(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True)
 
-    # BLOCKER #3: Formal markdown format specification
-    INDEX_TEMPLATE = """# {title}
 
-**Version:** {version}
+def _cell(value: Any) -> str:
+    return str(value).replace("|", "\\|").replace("\r\n", "<br>").replace("\n", "<br>")
 
-**Base URL:** {base_url}
 
-{description}
+def _endpoint_body(endpoint: Endpoint, deprecated: bool = False) -> str:
+    """Render only endpoint details represented in the OpenAPI model."""
+    heading = f"### {endpoint.method.upper()} {endpoint.path}"
+    if deprecated:
+        heading += " [DEPRECATED]"
+    lines = [heading, ""]
+    if endpoint.summary:
+        lines.extend([f"**{endpoint.summary}**", ""])
+    if endpoint.description:
+        lines.extend([endpoint.description, ""])
+    if endpoint.tags:
+        lines.extend(["Tags: " + ", ".join(endpoint.tags), ""])
+    if endpoint.parameters:
+        lines.extend(["#### Parameters", "", "| Name | Location | Type | Required | Description |",
+                      "| --- | --- | --- | --- | --- |"])
+        for parameter in endpoint.parameters:
+            lines.append("| {} | {} | {} | {} | {} |".format(
+                _cell(parameter.name), _cell(parameter.location), _cell(parameter.type),
+                "yes" if parameter.required else "no", _cell(parameter.description)))
+        lines.append("")
+        for parameter in endpoint.parameters:
+            if parameter.schema is not None:
+                lines.extend([f"##### {parameter.name} ({parameter.location}) Schema", "",
+                              "```json", _json(parameter.schema), "```", ""])
+    if endpoint.request_body is not None:
+        lines.extend(["#### Request Body", "", "```json", _json(endpoint.request_body), "```", ""])
+    if endpoint.responses:
+        lines.extend(["#### Responses", "", "| Status | Description |",
+                      "| --- | --- |"])
+        for code, response in sorted(endpoint.responses.items()):
+            lines.append(f"| {_cell(code)} | {_cell(response.description)} |")
+        lines.append("")
+        for code, response in sorted(endpoint.responses.items()):
+            if response.content:
+                for media_type, media in sorted(response.content.items()):
+                    lines.extend([f"##### {code} {media_type}", "", "```json", _json(media), "```", ""])
+            elif response.schema is not None:
+                lines.extend([f"##### {code} Schema", "", "```json", _json(response.schema), "```", ""])
+    if endpoint.examples:
+        lines.extend(["#### Examples", ""])
+        for name, example in sorted(endpoint.examples.items()):
+            lines.extend([f"##### {name}", "", "```json", _json(example), "```", ""])
+    return "\n".join(lines).rstrip() + "\n"
 
-## Overview
 
-This API documentation is auto-generated from the OpenAPI 3.1.0 schema.
+def _endpoint_block(endpoint: Endpoint, deprecated: bool = False) -> str:
+    body = _endpoint_body(endpoint, deprecated)
+    return (f"{ENDPOINT_START}\n<!-- docsync:endpoint:metadata {encode_endpoint(endpoint)} -->\n"
+            f"{body}{ENDPOINT_END}\n")
 
-**Total Endpoints:** {endpoint_count}
 
-## Endpoints
+def _single_line_marker(block: DocumentBlock, marker: str) -> bool:
+    return block.raw_markdown.rstrip("\r\n") == marker
 
-{endpoint_toc}
 
----
+def render_document(document: Document, current_endpoints: List[Endpoint], changes: Changes) -> str:
+    """Merge current endpoints into source-preserving document blocks."""
+    start_index: Optional[int] = None
+    end_index: Optional[int] = None
+    for index, block in enumerate(document.blocks):
+        if _single_line_marker(block, MANAGED_START):
+            start_index = index
+        elif _single_line_marker(block, MANAGED_END):
+            end_index = index
 
-*Last updated: {timestamp}*
-*Generated by docsync*
-"""
+    if start_index is None or end_index is None:
+        prefix = "".join(block.raw_markdown for block in document.blocks)
+        suffix = ""
+        custom_blocks: List[DocumentBlock] = []
+        existing: Dict[Tuple[str, str], DocumentBlock] = {}
+    else:
+        prefix = "".join(block.raw_markdown for block in document.blocks[:start_index])
+        suffix = "".join(block.raw_markdown for block in document.blocks[end_index + 1:])
+        custom_blocks = [block for block in document.blocks[start_index + 1:end_index]
+                         if block.endpoint is None]
+        existing = {_identity(block.endpoint): block for block in document.blocks
+                    if block.endpoint is not None}
 
-    ENDPOINT_TEMPLATE = """# {method} {path}
-
-{summary}
-
-## Description
-
-{description}
-
-## Parameters
-
-{parameters_section}
-
-## Responses
-
-{responses_section}
-
-## Examples
-
-### Request
-
-```
-{method} {path}
-```
-
-### Success Response (200)
-
-```json
-{{
-  "status": "success",
-  "message": "Request processed"
-}}
-```
-
-## See Also
-
-- [Back to Index](index.md)
-"""
-
-    @staticmethod
-    def endpoint_filename(endpoint: Endpoint) -> str:
-        """
-        Generate safe filename for endpoint.
-        
-        Format: METHOD_path_components.md
-        Example: GET_items.md, POST_items_{id}.md
-        
-        Args:
-            endpoint: Endpoint object
-        
-        Returns:
-            Safe filename string
-        """
-        # Replace path separators and curly braces
-        path_safe = endpoint.path.replace("/", "_").replace("{", "").replace("}", "")
-        filename = f"{endpoint.method}_{path_safe}".lower()
-        return f"{filename}.md"
-
-    @staticmethod
-    def generate_endpoint_markdown(endpoint: Endpoint) -> str:
-        """
-        Generate markdown for a single endpoint.
-        
-        Args:
-            endpoint: Endpoint object
-        
-        Returns:
-            Formatted markdown string
-        """
-        # Parameters section
-        if endpoint.parameters:
-            params_lines = ["| Name | Type | Required | Description |",
-                          "|------|------|----------|-------------|"]
-            for param in endpoint.parameters:
-                required = "✓" if param.required else "✗"
-                params_lines.append(
-                    f"| {param.name} | {param.schema_type} | {required} | {param.description} |"
-                )
-            parameters_section = "\n".join(params_lines)
+    ordered_current = sorted(current_endpoints, key=lambda endpoint: (endpoint.path, endpoint.method.upper()))
+    rendered = []
+    current_keys = {_identity(endpoint) for endpoint in ordered_current}
+    for endpoint in ordered_current:
+        block = existing.get(_identity(endpoint))
+        if block is not None and endpoints_equal(block.endpoint, endpoint):
+            rendered.append(block.raw_markdown)
         else:
-            parameters_section = "No parameters required."
+            rendered.append(_endpoint_block(endpoint))
+    deprecated = sorted((endpoint for endpoint in changes.removed
+                         if _identity(endpoint) not in current_keys),
+                        key=lambda endpoint: (endpoint.path, endpoint.method.upper()))
+    rendered.extend(_endpoint_block(endpoint, deprecated=True) for endpoint in deprecated)
+    custom = "".join(block.raw_markdown for block in custom_blocks)
 
-        # Responses section
-        if endpoint.responses:
-            responses_lines = ["| Status | Description | Content-Type |",
-                             "|--------|-------------|---------------|"]
-            for resp in endpoint.responses:
-                responses_lines.append(
-                    f"| {resp.status_code} | {resp.description} | {resp.content_type} |"
-                )
-            responses_section = "\n".join(responses_lines)
-        else:
-            responses_section = "No responses documented."
-
-        summary = f"**{endpoint.summary}**" if endpoint.summary else "*(No summary)*"
-        description = endpoint.description if endpoint.description else "*(No description)*"
-
-        return MarkdownFormatter.ENDPOINT_TEMPLATE.format(
-            method=endpoint.method,
-            path=endpoint.path,
-            summary=summary,
-            description=description,
-            parameters_section=parameters_section,
-            responses_section=responses_section
-        )
-
-    @staticmethod
-    def generate_index_markdown(schema: Schema) -> str:
-        """
-        Generate index markdown file.
-        
-        Args:
-            schema: Schema object
-        
-        Returns:
-            Formatted markdown string for index
-        """
-        # Group endpoints by path
-        grouped = schema.endpoints_by_path()
-        
-        toc_lines = []
-        for path in sorted(grouped.keys()):
-            endpoints = grouped[path]
-            methods = ", ".join(sorted([ep.method for ep in endpoints]))
-            toc_lines.append(f"- **{path}** ({methods})")
-            for ep in endpoints:
-                filename = MarkdownFormatter.endpoint_filename(ep)
-                toc_lines.append(f"  - [{ep.method} {ep.path}]({filename})")
-
-        endpoint_toc = "\n".join(toc_lines)
-        
-        from datetime import datetime
-        timestamp = datetime.now().isoformat()
-
-        return MarkdownFormatter.INDEX_TEMPLATE.format(
-            title=schema.title,
-            version=schema.version,
-            base_url=schema.base_url or "*(Not specified)*",
-            description=schema.description or "*(No description)*",
-            endpoint_count=len(schema.endpoints),
-            endpoint_toc=endpoint_toc,
-            timestamp=timestamp
-        )
+    if start_index is None or end_index is None:
+        separator = "" if not prefix or prefix.endswith(("\n", "\r")) else "\n"
+        prefix += separator
+        prefix += f"{MANAGED_START}\n"
+        ending = f"{MANAGED_END}\n"
+        return prefix + "".join(rendered) + custom + ending + suffix
+    start_block = document.blocks[start_index].raw_markdown
+    end_block = document.blocks[end_index].raw_markdown
+    return prefix + start_block + "".join(rendered) + custom + end_block + suffix
 
 
-class MarkdownGenerator:
-    """Generates markdown files from OpenAPI schema."""
-
-    @staticmethod
-    def generate(schema: Schema, output_dir: str) -> None:
-        """
-        Generate markdown documentation files.
-        
-        Implements atomic writes: all files succeed or operation is rolled back.
-        
-        Args:
-            schema: Parsed OpenAPI Schema
-            output_dir: Output directory for markdown files
-        
-        Raises:
-            OSError: If file write fails
-        """
-        logger.info(f"Generating markdown documentation to {output_dir}")
-        
-        # Ensure output directory exists
-        output_path = ensure_dir(output_dir)
-
-        try:
-            # Generate index
-            index_content = MarkdownFormatter.generate_index_markdown(schema)
-            index_file = output_path / "index.md"
-            write_file(str(index_file), index_content)
-            logger.info(f"Generated index: {index_file}")
-
-            # Generate endpoint files
-            for endpoint in schema.endpoints:
-                filename = MarkdownFormatter.endpoint_filename(endpoint)
-                endpoint_file = output_path / filename
-                
-                endpoint_content = MarkdownFormatter.generate_endpoint_markdown(endpoint)
-                write_file(str(endpoint_file), endpoint_content)
-                logger.info(f"Generated endpoint: {endpoint_file}")
-
-            logger.info(f"Successfully generated {len(schema.endpoints)} endpoint docs + index")
-
-        except OSError as e:
-            logger.error(f"Failed to generate markdown files: {e}")
-            raise
+def _endpoint_reference(endpoint: Endpoint) -> Dict[str, str]:
+    return {"path": endpoint.path, "method": endpoint.method.upper()}
 
 
-def generate_markdown(schema: Schema, output_dir: str) -> None:
-    """
-    Public API: Generate markdown documentation.
-    
-    Args:
-        schema: OpenAPI Schema object
-        output_dir: Output directory path
-    """
-    MarkdownGenerator.generate(schema, output_dir)
+def format_report(changes: Changes, report_format: str = "markdown",
+                  metadata: Optional[Dict[str, Any]] = None) -> str:
+    """Format an independent Markdown or JSON report with timestamp/version data."""
+    if report_format not in {"json", "markdown"}:
+        raise ValueError("Report format must be 'json' or 'markdown'")
+    details = dict(metadata or {})
+    timestamp = details.get("timestamp") or datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    report = {
+        "timestamp": timestamp,
+        "schema_version": details.get("schema_version", ""),
+        "schema_title": details.get("schema_title", ""),
+        "openapi_version": details.get("openapi_version", ""),
+        "added": [_endpoint_reference(endpoint) for endpoint in changes.added],
+        "modified": [{"from": _endpoint_reference(old), "to": _endpoint_reference(new)}
+                     for old, new in changes.modified],
+        "removed": [_endpoint_reference(endpoint) for endpoint in changes.removed],
+    }
+    if report_format == "json":
+        return json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True)
+    lines = ["# DocSync Report", "", f"- Timestamp: {timestamp}",
+             f"- Schema: {report['schema_title']} (version {report['schema_version']}; OpenAPI {report['openapi_version']})", ""]
+    for label in ("added", "modified", "removed"):
+        entries = report[label]
+        lines.extend([f"## {label.title()} ({len(entries)})", ""])
+        if not entries:
+            lines.extend(["- None", ""])
+            continue
+        for entry in entries:
+            if label == "modified":
+                source, target = entry["from"], entry["to"]
+                lines.append(f"- `{source['method']} {source['path']}` updated")
+            else:
+                lines.append(f"- `{entry['method']} {entry['path']}`")
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"

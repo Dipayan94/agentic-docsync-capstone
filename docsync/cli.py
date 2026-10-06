@@ -1,173 +1,96 @@
-"""
-Command-line interface for docsync.
-
-Commands:
-  docsync parse <schema-file>                - Parse and display schema info
-  docsync generate <schema-file> <output-dir> - Generate markdown docs
-  docsync diff <old-schema> <new-schema>     - Detect schema changes
-  docsync sync <schema-file> <docs-dir>      - Full workflow: parse → diff → generate → cache
-  docsync validate <docs-dir>                - Validate documentation completeness
-"""
+"""Command-line orchestration for the offline documentation sync workflow."""
 
 import argparse
+import logging
 import sys
+import traceback
 from pathlib import Path
-from docsync.parser import parse_openapi
-from docsync.generator import generate_markdown
-from docsync.diff_engine import DiffEngine
-from docsync.utils import get_logger
+from typing import List, Optional, Sequence
+
+from .diff_engine import detect_changes
+from .generator import format_report, render_document
+from .markdown_parser import parse_document
+from .models import ValidationError
+from .parser import parse_openapi
+from .utils import safe_write_file
 
 
-logger = get_logger(__name__)
+class _ArgumentParser(argparse.ArgumentParser):
+    def error(self, message: str) -> None:
+        raise ValueError(message)
 
 
-class DocsyncCLI:
-    """Command-line interface for docsync."""
-
-    @staticmethod
-    def parse_command(args) -> None:
-        """Parse and display schema info."""
-        try:
-            schema = parse_openapi(args.schema_file)
-            print(f"\n✓ Schema: {schema}")
-            print(f"  Endpoints: {len(schema.endpoints)}")
-            for ep in schema.endpoints[:5]:  # Show first 5
-                print(f"    - {ep}")
-            if len(schema.endpoints) > 5:
-                print(f"    ... and {len(schema.endpoints) - 5} more")
-        except Exception as e:
-            logger.error(f"Parse failed: {e}")
-            sys.exit(1)
-
-    @staticmethod
-    def generate_command(args) -> None:
-        """Generate markdown documentation."""
-        try:
-            schema = parse_openapi(args.schema_file)
-            generate_markdown(schema, args.output_dir)
-            print(f"\n✓ Generated {len(schema.endpoints)} endpoint docs in {args.output_dir}")
-        except Exception as e:
-            logger.error(f"Generate failed: {e}")
-            sys.exit(1)
-
-    @staticmethod
-    def diff_command(args) -> None:
-        """Detect schema changes."""
-        try:
-            old_schema = parse_openapi(args.old_schema)
-            new_schema = parse_openapi(args.new_schema)
-            changes = DiffEngine.compute_diff(old_schema, new_schema)
-            
-            print(f"\n✓ Detected {len(changes)} changes:")
-            for change in changes:
-                print(f"  - {change}")
-        except Exception as e:
-            logger.error(f"Diff failed: {e}")
-            sys.exit(1)
-
-    @staticmethod
-    def sync_command(args) -> None:
-        """Full sync workflow: parse → diff → generate → cache."""
-        try:
-            print(f"\n→ Parsing schema...")
-            new_schema = parse_openapi(args.schema_file)
-            
-            print(f"→ Loading previous schema...")
-            old_schema = DiffEngine.load_schema_cache("docs/schema_cache.json")
-            
-            print(f"→ Computing diff...")
-            changes = DiffEngine.compute_diff(old_schema, new_schema)
-            
-            print(f"→ Generating markdown...")
-            generate_markdown(new_schema, args.docs_dir)
-            
-            print(f"→ Saving cache...")
-            DiffEngine.save_schema_cache(new_schema, "docs/schema_cache.json")
-            
-            print(f"\n✓ Sync complete!")
-            print(f"  New schema: {new_schema}")
-            print(f"  Changes detected: {len(changes)}")
-            print(f"  Documentation: {args.docs_dir}")
-        except Exception as e:
-            logger.error(f"Sync failed: {e}")
-            sys.exit(1)
-
-    @staticmethod
-    def validate_command(args) -> None:
-        """Validate documentation completeness."""
-        try:
-            docs_path = Path(args.docs_dir)
-            if not docs_path.exists():
-                print(f"✗ Documentation directory not found: {args.docs_dir}")
-                sys.exit(1)
-            
-            md_files = list(docs_path.glob("*.md"))
-            if not md_files:
-                print(f"✗ No markdown files found in {args.docs_dir}")
-                sys.exit(1)
-            
-            print(f"\n✓ Documentation valid!")
-            print(f"  Directory: {args.docs_dir}")
-            print(f"  Files: {len(md_files)}")
-            for md_file in sorted(md_files)[:5]:
-                print(f"    - {md_file.name}")
-            if len(md_files) > 5:
-                print(f"    ... and {len(md_files) - 5} more")
-        except Exception as e:
-            logger.error(f"Validate failed: {e}")
-            sys.exit(1)
+def build_parser() -> argparse.ArgumentParser:
+    """Build the supported CLI argument parser."""
+    parser = _ArgumentParser(prog="docsync", description="Synchronize local API Markdown from OpenAPI JSON")
+    commands = parser.add_subparsers(dest="command", required=True)
+    sync = commands.add_parser("sync", help="Synchronize an existing Markdown document")
+    sync.add_argument("--schema", required=True, help="OpenAPI 3.0/3.1 JSON input")
+    sync.add_argument("--docs", required=True, help="Existing Markdown source document")
+    sync.add_argument("--output", required=True, help="Synchronized Markdown destination")
+    sync.add_argument("--dry-run", action="store_true", help="Report changes without writing output")
+    sync.add_argument("--format", choices=("json", "markdown"), default="markdown",
+                      help="Report format written to stdout (default: markdown)")
+    sync.add_argument("--verbose", action="store_true", help="Enable detailed diagnostics on stderr")
+    return parser
 
 
-def main():
-    """Main CLI entry point."""
-    parser = argparse.ArgumentParser(
-        prog="docsync",
-        description="Automated OpenAPI documentation sync"
-    )
-    
-    subparsers = parser.add_subparsers(dest="command", help="Commands")
+def sync_command(args: argparse.Namespace) -> int:
+    """Run the sync workflow, writing only a fully rendered document atomically."""
+    schema_path = Path(args.schema)
+    output_path = Path(args.output)
+    if schema_path.resolve() == output_path.resolve():
+        raise ValidationError("Output path must not overwrite the read-only OpenAPI schema")
 
-    # parse command
-    parse_parser = subparsers.add_parser("parse", help="Parse and display schema info")
-    parse_parser.add_argument("schema_file", help="Path to openapi.json")
+    schema = parse_openapi(args.schema)
+    document = parse_document(args.docs)
+    changes = detect_changes(document, schema.endpoints)
+    markdown = render_document(document, schema.endpoints, changes)
+    report = format_report(changes, args.format, {
+        "schema_title": schema.title,
+        "schema_version": schema.version,
+        "openapi_version": schema.openapi_version,
+    })
 
-    # generate command
-    gen_parser = subparsers.add_parser("generate", help="Generate markdown docs")
-    gen_parser.add_argument("schema_file", help="Path to openapi.json")
-    gen_parser.add_argument("output_dir", help="Output directory for markdown")
+    for warning in document.parse_warnings:
+        print(f"warning: {warning}", file=sys.stderr)
+    if not args.dry_run:
+        safe_write_file(args.output, markdown)
+    if args.verbose:
+        logging.getLogger(__name__).info(
+            "Sync completed: %d added, %d modified, %d removed%s",
+            len(changes.added), len(changes.modified), len(changes.removed),
+            " (dry run)" if args.dry_run else "",
+        )
+    sys.stdout.write(report)
+    return 0
 
-    # diff command
-    diff_parser = subparsers.add_parser("diff", help="Detect schema changes")
-    diff_parser.add_argument("old_schema", help="Path to previous openapi.json")
-    diff_parser.add_argument("new_schema", help="Path to current openapi.json")
 
-    # sync command
-    sync_parser = subparsers.add_parser("sync", help="Full sync workflow")
-    sync_parser.add_argument("schema_file", help="Path to openapi.json")
-    sync_parser.add_argument("docs_dir", help="Docs directory")
-
-    # validate command
-    val_parser = subparsers.add_parser("validate", help="Validate documentation")
-    val_parser.add_argument("docs_dir", help="Documentation directory")
-
-    args = parser.parse_args()
-
-    if not args.command:
-        parser.print_help()
-        sys.exit(1)
-
-    # Dispatch to command handler
-    if args.command == "parse":
-        DocsyncCLI.parse_command(args)
-    elif args.command == "generate":
-        DocsyncCLI.generate_command(args)
-    elif args.command == "diff":
-        DocsyncCLI.diff_command(args)
-    elif args.command == "sync":
-        DocsyncCLI.sync_command(args)
-    elif args.command == "validate":
-        DocsyncCLI.validate_command(args)
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    """Run the CLI and return the documented success/operational/validation code."""
+    parser = build_parser()
+    try:
+        args = parser.parse_args(argv)
+    except ValueError as error:
+        parser.print_usage(sys.stderr)
+        print(f"docsync: error: {error}", file=sys.stderr)
+        return 2
+    if args.verbose:
+        logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s", stream=sys.stderr)
+    try:
+        return sync_command(args)
+    except ValidationError as error:
+        print(f"docsync: validation error: {error}", file=sys.stderr)
+        return 2
+    except OSError as error:
+        print(f"docsync: I/O error: {error}", file=sys.stderr)
+        return 1
+    except Exception as error:
+        print(f"docsync: error: {error}", file=sys.stderr)
+        if args.verbose:
+            traceback.print_exc(file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
